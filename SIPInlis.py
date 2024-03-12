@@ -456,35 +456,3 @@ while True:
                     conn.sendall(resp)
     except Exception as error:
         print(logtime(),traceback.format_exc())
-
-# id = "B00001"
-
-# mycursor = mydb.cursor()
-# mycursor.execute("SELECT * FROM item WHERE item_code='"+id+"'")
-# myresult = mycursor.fetchall()
-# print(logtime(),myresult[0])
-
-
-# mycursor = mydb.cursor()
-
-# # get user info
-# # mycursor.execute("SELECT * FROM member WHERE member_id="+str(id))
-
-# # myresult = mycursor.fetchall()
-
-# # for x in myresult:
-# #   print(logtime(),x[1])
-
-
-# # add loan
-# sql = "INSERT INTO loan (item_code, member_id, loan_date, due_date, is_lent) VALUES (%s, %s, %s, %s, %s)"
-# val = ("B00007", "123", datetime.datetime.now().strftime('%Y-%m-%d'), (datetime.datetime.now() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'), 1)
-
-
-
-# mycursor.execute(sql, val)
-
-# mydb.commit()
-
-# print(logtime(),mycursor.rowcount, "record inserted.")
-# print(logtime(),mycursor._warnings)
