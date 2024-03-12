@@ -425,9 +425,10 @@ while True:
                                 mycursor = mydb.cursor()
                                 mycursor.execute("SELECT cl.DueDate FROM collectionloanitems as cl, collections as cs WHERE cs.NomorBarcode = '"+item_id+"' AND cs.ID = cl.Collection_id AND cl.LoanStatus = \"Loan\" ORDER BY LoanDate DESC")
                                 myresult = mycursor.fetchall()
-                                due = myresult[0][0]
+                                
                                 if len(myresult) != 0:
                                     loaned = True
+                                    due = myresult[0][0]
 
                                     if not loaned:   
                                         resp = bytes("100NNN"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AQ|AJ"+title+"|AFBUKU BELUM DIPINJAM"+"\r", 'utf-8')
