@@ -1,6 +1,5 @@
-# SIP2-SLIMS
-SIP2 Gateway for SLIMS
-
+# SIP2-Inlislite
+SIP2 Gateway for Inlislite v3.2
 # How To Use
 - Install python in LMS server
 - Configure IP, Port, DB Setting, Library Name, and language
