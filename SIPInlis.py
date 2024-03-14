@@ -437,7 +437,7 @@ while True:
                                         resp = bytes("101YNN"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AQ|AJ"+title+"|AFBUKU BERHASIL DIKEMBALIKAN"+"\r", 'utf-8')
 
                                         # update to loan
-                                        sql = "UPDATE collectionloanitems SET LoanStatus=%s, UpdateDate=%s, ActualReturn=%s, LateDays=TO_DAYS(DueDate) - TO_DAYS(NOW()) WHERE LoanStatus=\"Loan\" AND Collection_id=%s"
+                                        sql = "UPDATE collectionloanitems SET LoanStatus=%s, UpdateDate=%s, ActualReturn=%s, LateDays=TO_DAYS(NOW()) - TO_DAYS(DueDate) WHERE LoanStatus=\"Loan\" AND Collection_id=%s"
                                         val = ("Return", returnY + "-" + returnM + "-" + returnD, returnY + "-" + returnM + "-" + returnD, collection_id)
 
                                         mycursor.execute(sql, val)
