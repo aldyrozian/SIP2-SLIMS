@@ -8,7 +8,7 @@ import traceback
 HOST = "192.168.20.144"  # The IP Address of Translator SIP 
 PORT = 6001  # The port used by Translator SIP
 
-library_name = "Udayana University"
+library_name = "Lib"
 language = "001"
 
 def gettime():
