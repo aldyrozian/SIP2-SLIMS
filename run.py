@@ -3,7 +3,7 @@ import datetime
 import socket
 import logging
 
-HOST = "192.168.20.251"  # The IP Address of Translator SIP 
+HOST = "127.0.0.1"  # The IP Address of Translator SIP 
 PORT = 6001  # The port used by Translator SIP
 
 library_name = "Perpustakaan"
@@ -119,7 +119,7 @@ def handle_checkout(user_id, item_id):
 
     # Mendapatkan batasan peminjaman dan periode peminjaman
     query = "SELECT loan_limit, loan_periode FROM mst_member_type WHERE member_type_id=%s"
-    myresult = fetch_data(query, (str(member_type),))
+    myresult = fetch_data(query, (member_type,))
     loan_limit = myresult[0][0]
     loan_periode = myresult[0][1]
 
@@ -131,10 +131,9 @@ def handle_checkout(user_id, item_id):
     if loan == loan_limit:
         return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFSUDAH MENCAPAI LIMIT PEMINJAMAN" + "\r", 'utf-8')
 
-    # Cek apakah item ada dalam database and coll_type_id not 1 itu karena coll_type_id yg nilainya 1 di tabel item itu buku referensi yang nggak boleh dipinjam, seperti di UNJ.
-    query = "SELECT biblio_id FROM item WHERE  item_code='"+item_id+"' AND coll_type_id NOT LIKE '1'"
+    # Cek apakah item ada dalam database dan apakah item adalah buku referensi (tidak boleh dipinjam)
+    query = "SELECT biblio_id, coll_type_id FROM item WHERE item_code=%s"
     myresult = fetch_data(query, (item_id,))
-    
     if not myresult:
         return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DITEMUKAN" + "\r", 'utf-8')
 
@@ -147,28 +146,21 @@ def handle_checkout(user_id, item_id):
     title = myresult[0][0]
 
     # Mendapatkan aturan peminjaman
-    query = "SELECT loan_rules_id FROM mst_loan_rules WHERE member_type_id=%s AND coll_type_id=%s"
+    query = "SELECT loan_rules_id FROM mst_loan_rules WHERE member_type_id=%s AND (coll_type_id=%s OR coll_type_id = 0);"
     loan_rules_result = fetch_data(query, (member_type, coll_type_id))
     
     if not loan_rules_result:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFATURAN TIDAK DITEMUKAN" + "\r", 'utf-8')
 
     loan_rules_id = loan_rules_result[0][0]
 
-    # Cek apakah item sudah dipinjam
-    query = "SELECT due_date FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0 ORDER BY loan_id"
-    loan_result = fetch_data(query, (item_id,))
-    loaned = len(loan_result) != 0
-
-    if loaned:
-        query = "SELECT l.item_code FROM reserve AS rs INNER JOIN loan AS l ON rs.item_code = l.item_code WHERE l.item_code = %s AND l.member_id != %s"
-        reserved_result = fetch_data(query, (item_id, user_id))
-
-        if reserved_result:
-            return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
-
-    # Buku belum dipinjam, lanjutkan peminjaman
-    return bytes("121NNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH" + str((datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d')) + "|AB" + str(item_id) + "|AJ" + title + "|AFBUKU BERHASIL DIPINJAM" + "\r", 'utf-8')
+    # Cek apakah item sudah dipinjam oleh anggota yang sama
+    query = "SELECT due_date FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0 AND member_id=%s"
+    loan_result = fetch_data(query, (item_id, user_id))
+    
+    if loan_result:
+        # Jika item sudah dipinjam oleh user yang sama, anggap sebagai perpanjangan
+        return handle_renewal(user_id, item_id)
 
     # Masukkan data peminjaman ke database
     query = """
@@ -179,17 +171,11 @@ def handle_checkout(user_id, item_id):
            (datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d'), loan_rules_id, 1)
     fetch_data(query, val)
 
-    # Log peminjaman jika menggunakan SLiMS versi 9
-    if slims_version == 9:
-        query = """
-            INSERT INTO system_log (log_type, id, log_location, sub_module, action, log_msg, log_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        val = ("system", user_id, "circulation", "Loan", "Add", "Gateway: Loan", datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        fetch_data(query, val)
-
     print(logtime(), "DB Closed")
-    return resp
+
+    # Buku belum dipinjam sebelumnya, lanjutkan peminjaman
+    return bytes("121NNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH" + str((datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d')) + "|AB" + str(item_id) + "|AJ" + title + "|AFBUKU BERHASIL DIPINJAM" + "\r", 'utf-8')
+
 
 def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
     print(logtime(), datetimeY, datetimeM, datetimeD)
