@@ -255,27 +255,27 @@ def handle_renewal(user_id, item_id):
     reserved_result = fetch_data(query, (item_id, user_id))
 
     if reserved_result and len(reserved_result) > 0:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
 
     # Check loan status
     query = "SELECT loan_id, due_date, renewed FROM loan WHERE is_lent = 1 AND is_return = 0 AND item_code = %s AND member_id = %s"
     loan_result = fetch_data(query, (item_id, user_id))
 
     if not loan_result or len(loan_result) == 0:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DIPINJAM" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DIPINJAM" + "\r", 'utf-8')
 
     loan_id, due_date, renewed = loan_result[0]
 
     # Check if item has already been renewed
     if renewed >= 2:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "\r", 'utf-8')
 
     # Get loan rules for this loan
     query = "SELECT loan_periode FROM mst_loan_rules WHERE loan_rules_id = (SELECT loan_rules_id FROM loan WHERE loan_id = %s)"
     loan_rules_result = fetch_data(query, (loan_id,))
 
     if not loan_rules_result or len(loan_rules_result) == 0:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "\r", 'utf-8')
 
     loan_periode = loan_rules_result[0][0]
 
@@ -288,7 +288,7 @@ def handle_renewal(user_id, item_id):
     expire_result = fetch_data(query, (user_id,))
 
     if not expire_result or len(expire_result) == 0:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFMEMBER EXPIRY DATE NOT FOUND" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFMEMBER EXPIRY DATE NOT FOUND" + "\r", 'utf-8')
 
     expiry_date = expire_result[0][0]
 
@@ -305,7 +305,7 @@ def handle_renewal(user_id, item_id):
     """
     db = connect_db()
     if db is None:
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
 
     cursor = db.cursor()
     try:
@@ -315,7 +315,7 @@ def handle_renewal(user_id, item_id):
         print(logtime(), cursor._warnings)
     except mysql.connector.Error as err:
         logging.error(f"{logtime()} DB Update Error: {err}")
-        return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
     finally:
         cursor.close()
         db.close()
@@ -374,6 +374,7 @@ def handle_client(conn, addr):
                 resp = handle_checkin(item_id, datetimeY, datetimeM, datetimeD)
                 print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "11":
+                print(logtime(), "CheckOut")
                 user_id = string.split("AA")[1].split("|")[0]
                 item_id = string.split("AB")[1].split("|")[0]
                 resp = handle_checkout(user_id, item_id)
