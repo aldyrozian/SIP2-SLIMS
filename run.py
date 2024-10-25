@@ -2,8 +2,9 @@ import mysql.connector
 import datetime
 import socket
 import logging
+import datetime
 
-HOST = "127.0.0.1"  # The IP Address of Translator SIP 
+HOST = "192.168.20.251"  # The IP Address of Translator SIP 
 PORT = 6001  # The port used by Translator SIP
 
 library_name = "Perpustakaan"
@@ -157,10 +158,17 @@ def handle_checkout(user_id, item_id):
     # Cek apakah item sudah dipinjam oleh anggota yang sama
     query = "SELECT due_date FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0 AND member_id=%s"
     loan_result = fetch_data(query, (item_id, user_id))
+    print(loan_result)
     
-    if loan_result:
+    if loan_result :
         # Jika item sudah dipinjam oleh user yang sama, anggap sebagai perpanjangan
         return handle_renewal(user_id, item_id)
+    
+    # Cek apakah item sudah dipinjam oleh anggota lain
+    query = "SELECT loan_id FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0"
+    loan_result = fetch_data(query, (item_id,))
+    if loan_result:
+            return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
 
     # Masukkan data peminjaman ke database
     query = """
@@ -259,7 +267,7 @@ def handle_renewal(user_id, item_id):
     loan_id, due_date, renewed = loan_result[0]
 
     # Check if item has already been renewed
-    if renewed >= 1:
+    if renewed >= 2:
         return bytes("300NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "\r", 'utf-8')
 
     # Get loan rules for this loan
@@ -271,8 +279,9 @@ def handle_renewal(user_id, item_id):
 
     loan_periode = loan_rules_result[0][0]
 
-    # Calculate new due date
-    new_due_date = due_date + datetime.timedelta(days=loan_periode)
+    # If your new_due_date is a datetime object
+    new_due_date = datetime.datetime.now() + datetime.timedelta(days=loan_periode)
+    new_due_date = new_due_date.date()  # This will give you only the date part
 
     # Get member expiry date
     query = "SELECT expire_date FROM member WHERE member_id = %s"
@@ -284,6 +293,7 @@ def handle_renewal(user_id, item_id):
     expiry_date = expire_result[0][0]
 
     # Check if new due date exceeds member expiry date
+    print(new_due_date, expiry_date)
     if new_due_date > expiry_date:
         new_due_date = expiry_date
 
@@ -336,7 +346,7 @@ def handle_patron_information(user_id):
 
     return bytes("64  "+summary+"           001"+gettime()+(" "*8)+"   "+str(loan_count)+(" "*12)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+charged_item+"|BLY"+"\r", "utf-8")
 
-def handle_client(conn,addr):
+def handle_client(conn, addr):
     with conn:
         print(logtime(), f"Connected by {addr}")
         while True:
@@ -352,48 +362,48 @@ def handle_client(conn,addr):
             user_id = ""
             # SC registration
             if string[0:2] == "99":
-                print(logtime(),"SC registration")
+                print(logtime(), "SC registration")
                 resp = handle_sc_registration()
             # item information
             elif string[0:2] == "09":
-                print(logtime(),"Checkin")
+                print(logtime(), "Checkin")
                 item_id = string.split("AB")[1].split("|")[0]
                 datetimeY = string[3:7]
                 datetimeM = string[7:9]
                 datetimeD = string[9:11]
-                resp = handle_checkin(item_id,datetimeY,datetimeM,datetimeD)
-                print(logtime(),"SIP RESPONSE : ",resp)
+                resp = handle_checkin(item_id, datetimeY, datetimeM, datetimeD)
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "11":
                 user_id = string.split("AA")[1].split("|")[0]
                 item_id = string.split("AB")[1].split("|")[0]
                 resp = handle_checkout(user_id, item_id)
-                print(logtime(),"SIP RESPONSE : ",resp)
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "17":
-                print(logtime(),"Item Information")
+                print(logtime(), "Item Information")
                 item_id = string.split("AB")[1].split("|")[0]
                 resp = handle_item_information(item_id)
-                print(logtime(),"SIP RESPONSE : ",resp)
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "23":
-                print(logtime(),"Patron Status")
+                print(logtime(), "Patron Status")
                 user_id = string.split("AA")[1].split("|")[0]
                 resp = handle_patron_status(user_id)
-                print(logtime(),"SIP RESPONSE : ",resp)
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "29":
-                print(logtime(),"Item Renewal")
+                print(logtime(), "Item Renewal")
                 user_id = string.split("AA")[1].split("|")[0]
                 item_id = string.split("AB")[1].split("|")[0]
-                resp = handle_renewal(user_id,item_id)
-                print(logtime(),"SIP RESPONSE : ",resp)                
+                resp = handle_renewal(user_id, item_id)
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "35":
-                print(logtime(),"Patron End Session")
+                print(logtime(), "Patron End Session")
                 user_id = string.split("AA")[1].split("|")[0]
-                resp = bytes("36Y"+gettime()+"|AO"+library_name+"|AA"+str(user_id)+"\r", 'utf-8')
-                print(logtime(),"SIP RESPONSE : ",resp)
+                resp = bytes("36Y" + gettime() + "|AO" + library_name + "|AA" + str(user_id) + "\r", 'utf-8')
+                print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "63":
-                print(logtime(),"Patron Information")
+                print(logtime(), "Patron Information")
                 user_id = string.split("AA")[1].split("|")[0]
-                resp =  handle_patron_information(user_id)
-                print(logtime(),"SIP RESPONSE : ",resp)
+                resp = handle_patron_information(user_id)
+                print(logtime(), "SIP RESPONSE : ", resp)
             conn.sendall(resp)
 
 def start_server():
