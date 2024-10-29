@@ -51,20 +51,20 @@ def fetch_data(query, params=None):
         print(logtime(), "DB Closed")
 
 def handle_sc_registration():
-    return bytes("98YYYNNN500   003"+gettime()+"2.00AO"+library_name+"|BXNYYNYNNYNNYNNNNN"+"\r", 'utf-8')
+    return bytes("98YYYNNN500   003"+gettime()+"2.00AO"+library_name+"|BXNYYNYNNYNNYNNNNN"+"|\r", 'utf-8')
 
 def handle_item_information(item_id):
     query = "SELECT biblio_id FROM item WHERE item_code=%s"
     result = fetch_data(query, (item_id,))
     if not result:
-        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN"+"\r", 'utf-8')
+        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN"+"|\r", 'utf-8')
 
     biblio_id = result[0][0]
     query = "SELECT title FROM biblio WHERE biblio_id=%s"
     title_result = fetch_data(query, (biblio_id,))
     
     if not title_result:
-        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN"+"\r", 'utf-8')
+        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN"+"|\r", 'utf-8')
 
     title = title_result[0][0]
     
@@ -73,45 +73,45 @@ def handle_item_information(item_id):
     
     if loan_result:
         due_date = loan_result[0][0]
-        return bytes("18"+"02"+"0001"+gettime()+"AO"+library_name+"|AH"+due_date.strftime('%Y-%m-%d')+"|AB"+str(item_id)+"|AJ"+title+"\r", 'utf-8')
+        return bytes("18"+"02"+"0001"+gettime()+"|AH"+due_date.strftime('%Y-%m-%d')+"|AB"+str(item_id)+"|AJ"+title+"|\r", 'utf-8')
     else:
-        return bytes("18"+"03"+"0001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ"+title+"\r", 'utf-8')
+        return bytes("18"+"03"+"0001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ"+title+"|\r", 'utf-8')
 
 def handle_patron_status(user_id):
     query = "SELECT member_name, expire_date FROM member WHERE member_id=%s"
     result = fetch_data(query, (user_id,))
     if result is None:
-        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|BLN|AFANGGOTA TIDAK DITEMUKAN"+"\r", 'utf-8')
+        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|BLN|AFANGGOTA TIDAK DITEMUKAN"+"|\r", 'utf-8')
     
     if not result:
-        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|BLN|AFANGGOTA TIDAK DITEMUKAN"+"\r", 'utf-8')
+        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|BLN|AFANGGOTA TIDAK DITEMUKAN"+"|\r", 'utf-8')
     
     name, expdate = result[0]
     
     if datetime.datetime.date(datetime.datetime.now()) > expdate:
-        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANGGOTA TIDAK AKTIF"+"\r", 'utf-8')
+        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANGGOTA TIDAK AKTIF"+"|\r", 'utf-8')
 
     query = "SELECT loan_id FROM loan WHERE is_lent=1 AND is_return=0 AND TO_DAYS(due_date) < TO_DAYS(NOW()) AND member_id=%s"
     overdue_loans = fetch_data(query, (user_id,))
 
     if overdue_loans:
-        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI"+"\r", 'utf-8')
+        return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI"+"|\r", 'utf-8')
 
-    return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLY"+"\r", 'utf-8')
+    return bytes("24"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLY"+"|\r", 'utf-8')
 
 def handle_checkout(user_id, item_id):
     try:
         print(logtime(), "DB Connected")
     except Exception as error:
         logging.error(f"{logtime()} DB Connection Error: {error}")
-        return bytes("12"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AB"+str(item_id)+"|AFGAGAL MELAKUKAN PEMINJAMAN"+"\r", 'utf-8')
+        return bytes("12"+" "*14+language+gettime()+"AO"+library_name+"|AA"+str(user_id)+"|AB"+str(item_id)+"|AFGAGAL MELAKUKAN PEMINJAMAN"+"|\r", 'utf-8')
 
     # Cek apakah anggota memiliki denda
     query = "SELECT loan_id FROM loan WHERE is_lent=1 AND is_return=0 AND TO_DAYS(due_date) < TO_DAYS(NOW()) AND member_id=%s"
     myresult = fetch_data(query, (user_id,))
     
     if myresult and len(myresult) != 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI" + "|\r", 'utf-8')
 
     # Mendapatkan tipe anggota
     query = "SELECT member_type_id FROM member WHERE member_id=%s"
@@ -130,13 +130,13 @@ def handle_checkout(user_id, item_id):
     loan = len(myresult)
 
     if loan == loan_limit:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFSUDAH MENCAPAI LIMIT PEMINJAMAN" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFSUDAH MENCAPAI LIMIT PEMINJAMAN" + "|\r", 'utf-8')
 
     # Cek apakah item ada dalam database dan apakah item adalah buku referensi (tidak boleh dipinjam)
     query = "SELECT biblio_id, coll_type_id FROM item WHERE item_code=%s"
     myresult = fetch_data(query, (item_id,))
     if not myresult:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DITEMUKAN" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DITEMUKAN" + "|\r", 'utf-8')
 
     biblio_id = myresult[0][0]
     coll_type_id = myresult[0][1]
@@ -151,7 +151,7 @@ def handle_checkout(user_id, item_id):
     loan_rules_result = fetch_data(query, (member_type, coll_type_id))
     
     if not loan_rules_result:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFATURAN TIDAK DITEMUKAN" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFATURAN TIDAK DITEMUKAN" + "|\r", 'utf-8')
 
     loan_rules_id = loan_rules_result[0][0]
 
@@ -168,7 +168,7 @@ def handle_checkout(user_id, item_id):
     query = "SELECT loan_id FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0"
     loan_result = fetch_data(query, (item_id,))
     if loan_result:
-            return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
+            return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU DITAHAN OLEH ANGGOTA LAIN" + "|\r", 'utf-8')
 
     # Masukkan data peminjaman ke database
     query = """
@@ -182,7 +182,7 @@ def handle_checkout(user_id, item_id):
     print(logtime(), "DB Closed")
 
     # Buku belum dipinjam sebelumnya, lanjutkan peminjaman
-    return bytes("121NNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH" + str((datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d')) + "|AB" + str(item_id) + "|AJ" + title + "|AFBUKU BERHASIL DIPINJAM" + "\r", 'utf-8')
+    return bytes("121NNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH" + str((datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d')) + "|AB" + str(item_id) + "|AJ" + title + "|AFBUKU BERHASIL DIPINJAM" + "|\r", 'utf-8')
 
 
 def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
@@ -193,17 +193,17 @@ def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
     myresult = fetch_data(query, (item_id,))
     
     if myresult is None:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
 
     if len(myresult) != 0:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFANDA MENDAPAT DENDA, SILAHKAN KE SIRKULASI" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFANDA MENDAPAT DENDA, SILAHKAN KE SIRKULASI" + "|\r", 'utf-8')
 
     # Check book
     query = "SELECT biblio_id FROM item WHERE item_code=%s"
     myresult = fetch_data(query, (item_id,))
     
     if myresult is None or len(myresult) == 0:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFBUKU TIDAK DITEMUKAN" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFBUKU TIDAK DITEMUKAN" + "|\r", 'utf-8')
 
     # Get title
     biblio_id = myresult[0][0]
@@ -211,7 +211,7 @@ def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
     myresult = fetch_data(query, (biblio_id,))
     
     if myresult is None or len(myresult) == 0:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFBUKU TIDAK DITEMUKAN" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFBUKU TIDAK DITEMUKAN" + "|\r", 'utf-8')
 
     title = myresult[0][0]
 
@@ -220,10 +220,10 @@ def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
     myresult = fetch_data(query, (item_id,))
     
     if myresult is None:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
 
     if len(myresult) == 0:
-        return bytes("100NNN" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ" + title + "|AFBUKU BELUM DIPINJAM" + "\r", 'utf-8')
+        return bytes("100NNN" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ" + title + "|AFBUKU BELUM DIPINJAM" + "|\r", 'utf-8')
 
     # Update to loan
     query = "UPDATE loan SET is_return=%s, return_date=%s WHERE loan_id=%s"
@@ -231,7 +231,7 @@ def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
     
     db = connect_db()
     if db is None:
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
 
     cursor = db.cursor()
     try:
@@ -241,13 +241,13 @@ def handle_checkin(item_id, datetimeY, datetimeM, datetimeD):
         print(logtime(), cursor._warnings)
     except mysql.connector.Error as err:
         logging.error(f"{logtime()} DB Update Error: {err}")
-        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("100NNY" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
     finally:
         cursor.close()
         db.close()
         print(logtime(), "DB Closed")
 
-    return bytes("101YNN" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ" + title + "|AFBUKU BERHASIL DIKEMBALIKAN" + "\r", 'utf-8')
+    return bytes("101YNN" + gettime() + "AO" + library_name + "|AB" + str(item_id) + "|AQ|AJ" + title + "|AFBUKU BERHASIL DIKEMBALIKAN" + "|\r", 'utf-8')
 
 def handle_renewal(user_id, item_id):
     # Check if this item is being reserved by another member
@@ -255,27 +255,27 @@ def handle_renewal(user_id, item_id):
     reserved_result = fetch_data(query, (item_id, user_id))
 
     if reserved_result and len(reserved_result) > 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM DITAHAN OLEH ANGGOTA LAIN" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM DITAHAN OLEH ANGGOTA LAIN" + "|\r", 'utf-8')
 
     # Check loan status
     query = "SELECT loan_id, due_date, renewed FROM loan WHERE is_lent = 1 AND is_return = 0 AND item_code = %s AND member_id = %s"
     loan_result = fetch_data(query, (item_id, user_id))
 
     if not loan_result or len(loan_result) == 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DIPINJAM" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFBUKU TIDAK DIPINJAM" + "|\r", 'utf-8')
 
     loan_id, due_date, renewed = loan_result[0]
 
     # Check if item has already been renewed
     if renewed >= 2:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "|\r", 'utf-8')
 
     # Get loan rules for this loan
     query = "SELECT loan_periode FROM mst_loan_rules WHERE loan_rules_id = (SELECT loan_rules_id FROM loan WHERE loan_id = %s)"
     loan_rules_result = fetch_data(query, (loan_id,))
 
     if not loan_rules_result or len(loan_rules_result) == 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "|\r", 'utf-8')
 
     loan_periode = loan_rules_result[0][0]
 
@@ -288,7 +288,7 @@ def handle_renewal(user_id, item_id):
     expire_result = fetch_data(query, (user_id,))
 
     if not expire_result or len(expire_result) == 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFMEMBER EXPIRY DATE NOT FOUND" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFMEMBER EXPIRY DATE NOT FOUND" + "|\r", 'utf-8')
 
     expiry_date = expire_result[0][0]
 
@@ -305,7 +305,7 @@ def handle_renewal(user_id, item_id):
     """
     db = connect_db()
     if db is None:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
 
     cursor = db.cursor()
     try:
@@ -315,28 +315,28 @@ def handle_renewal(user_id, item_id):
         print(logtime(), cursor._warnings)
     except mysql.connector.Error as err:
         logging.error(f"{logtime()} DB Update Error: {err}")
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "\r", 'utf-8')
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFGAGAL MENGHUBUNGKAN KE DATABASE" + "|\r", 'utf-8')
     finally:
         cursor.close()
         db.close()
         print(logtime(), "DB Closed")
 
-    return bytes("121YNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RENEWED SUCCESSFULLY" + "\r", 'utf-8')
+    return bytes("121YNY" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RENEWED SUCCESSFULLY" + "|\r", 'utf-8')
 
 def handle_patron_information(user_id):
     query = "SELECT member_name, expire_date FROM member WHERE member_id=%s"
     result = fetch_data(query, (user_id,))
     if not result:
-        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|BLN|AFANGGOTA TIDAK ADA"+"\r", "utf-8")
+        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|BLN|AFANGGOTA TIDAK ADA"+"|\r", "utf-8")
 
     name, expdate = result[0]
     if datetime.datetime.date(datetime.datetime.now()) > expdate:
-        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANGGOTA TIDAK AKTIF"+"\r", "utf-8")
+        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANGGOTA TIDAK AKTIF"+"|\r", "utf-8")
 
     query = "SELECT loan_id FROM loan WHERE is_lent=1 AND is_return=0 AND TO_DAYS(due_date) < TO_DAYS(NOW()) AND member_id=%s"
     overdue_loans = fetch_data(query, (user_id,))
     if overdue_loans:
-        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI"+"\r", "utf-8")
+        return bytes("64              001"+gettime()+(" "*24)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+"|BLN|AFANDA DIKENAKAN DENDA, SILAHKAN HUBUNGI MEJA SIRKULASI"+"|\r", "utf-8")
 
     query = "SELECT item_code FROM loan WHERE member_id=%s AND is_lent=1 AND is_return=0 ORDER BY loan_id"
     loan_result = fetch_data(query, (user_id,))
@@ -344,7 +344,7 @@ def handle_patron_information(user_id):
     summary = "Y" if loan_count > 0 else " "
     charged_item = "".join(f"|AU{id[0]}" for id in loan_result)
 
-    return bytes("64  "+summary+"           001"+gettime()+(" "*8)+"   "+str(loan_count)+(" "*12)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+charged_item+"|BLY"+"\r", "utf-8")
+    return bytes("64  "+summary+"           001"+gettime()+(" "*8)+"   "+str(loan_count)+(" "*12)+"AO"+library_name+"|AA"+str(user_id)+"|AE"+name+charged_item+"|BLY"+"|\r", "utf-8")
 
 def handle_client(conn, addr):
     with conn:
@@ -398,7 +398,7 @@ def handle_client(conn, addr):
             elif string[0:2] == "35":
                 print(logtime(), "Patron End Session")
                 user_id = string.split("AA")[1].split("|")[0]
-                resp = bytes("36Y" + gettime() + "|AO" + library_name + "|AA" + str(user_id) + "\r", 'utf-8')
+                resp = bytes("36Y" + gettime() + "|AO" + library_name + "|AA" + str(user_id) + "|\r", 'utf-8')
                 print(logtime(), "SIP RESPONSE : ", resp)
             elif string[0:2] == "63":
                 print(logtime(), "Patron Information")
