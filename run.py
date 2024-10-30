@@ -59,12 +59,6 @@ def handle_item_information(item_id):
     if not result:
         return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN !"+"|\r", 'utf-8')
 
-    # UNJ BUKU REREENSI TIDAK BOLEH DIPINJAM
-    queryrr = "SELECT biblio_id FROM item WHERE  item_code='"+item_id+"' AND coll_type_id NOT LIKE '1"
-    result = fetch_data(queryrr, (item_id,))
-    if not result:
-        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU REFERENSI TIDAK BOLEH DIPINJAM !"+"|\r", 'utf-8')
-
     biblio_id = result[0][0]
     query = "SELECT title FROM biblio WHERE biblio_id=%s"
     title_result = fetch_data(query, (biblio_id,))
@@ -124,6 +118,12 @@ def handle_checkout(user_id, item_id):
     myresult = fetch_data(query, (user_id,))
     member_type = myresult[0][0]
 
+    #UNJ BUKU REFERENSI TIDAK BOLEH DIPINJAM
+    query = "SELECT coll_type_id FROM item WHERE item_code=%s AND coll_type_id not like '1'"
+    myresult = fetch_data(query, (item_id,))
+    if len(myresult) == 0:
+        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU REFERENSI TIDAK BOLEH DIPINJAM" + "|\r", 'utf-8')
+
     # Mendapatkan batasan peminjaman dan periode peminjaman
     query = "SELECT loan_limit, loan_periode FROM mst_member_type WHERE member_type_id=%s"
     myresult = fetch_data(query, (member_type,))
@@ -174,7 +174,7 @@ def handle_checkout(user_id, item_id):
     query = "SELECT loan_id FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0"
     loan_result = fetch_data(query, (item_id,))
     if loan_result:
-            return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU DITAHAN OLEH ANGGOTA LAIN" + "|\r", 'utf-8')
+            return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFBUKU SEDANG DIPINJAM OLEH ANGGOTA LAIN" + "|\r", 'utf-8')
 
     # Masukkan data peminjaman ke database
     query = """
