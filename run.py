@@ -57,7 +57,13 @@ def handle_item_information(item_id):
     query = "SELECT biblio_id FROM item WHERE item_code=%s"
     result = fetch_data(query, (item_id,))
     if not result:
-        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN"+"|\r", 'utf-8')
+        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU TIDAK DITEMUKAN !"+"|\r", 'utf-8')
+
+    # UNJ BUKU REREENSI TIDAK BOLEH DIPINJAM
+    queryrr = "SELECT biblio_id FROM item WHERE  item_code='"+item_id+"' AND coll_type_id NOT LIKE '1"
+    result = fetch_data(queryrr, (item_id,))
+    if not result:
+        return bytes("18000001"+gettime()+"AO"+library_name+"|AB"+str(item_id)+"|AJ|AFBUKU REFERENSI TIDAK BOLEH DIPINJAM !"+"|\r", 'utf-8')
 
     biblio_id = result[0][0]
     query = "SELECT title FROM biblio WHERE biblio_id=%s"
@@ -146,14 +152,14 @@ def handle_checkout(user_id, item_id):
     myresult = fetch_data(query, (str(biblio_id),))
     title = myresult[0][0]
 
-    # Mendapatkan aturan peminjaman
-    query = "SELECT loan_rules_id FROM mst_loan_rules WHERE member_type_id=%s AND (coll_type_id=%s OR coll_type_id = 0);"
-    loan_rules_result = fetch_data(query, (member_type, coll_type_id))
+    # # Mendapatkan aturan peminjaman
+    # query = "SELECT loan_rules_id FROM mst_loan_rules WHERE member_type_id=%s AND (coll_type_id=%s OR coll_type_id = 0);"
+    # loan_rules_result = fetch_data(query, (member_type, coll_type_id))
     
-    if not loan_rules_result:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFATURAN TIDAK DITEMUKAN" + "|\r", 'utf-8')
+    # if not loan_rules_result:
+    #     return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AH|AB" + str(item_id) + "|AJ|AFATURAN TIDAK DITEMUKAN" + "|\r", 'utf-8')
 
-    loan_rules_id = loan_rules_result[0][0]
+    # loan_rules_id = loan_rules_result[0][0]
 
     # Cek apakah item sudah dipinjam oleh anggota yang sama
     query = "SELECT due_date FROM loan WHERE item_code=%s AND is_lent=1 AND is_return=0 AND member_id=%s"
@@ -172,11 +178,11 @@ def handle_checkout(user_id, item_id):
 
     # Masukkan data peminjaman ke database
     query = """
-        INSERT INTO loan (item_code, member_id, loan_date, due_date, loan_rules_id, is_lent)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO loan (item_code, member_id, loan_date, due_date, is_lent)
+        VALUES (%s, %s, %s, %s, %s)
     """
     val = (item_id, user_id, datetime.datetime.now().strftime('%Y-%m-%d'), 
-           (datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d'), loan_rules_id, 1)
+           (datetime.datetime.now() + datetime.timedelta(days=loan_periode)).strftime('%Y-%m-%d'), 1)
     fetch_data(query, val)
 
     print(logtime(), "DB Closed")
@@ -270,14 +276,24 @@ def handle_renewal(user_id, item_id):
     if renewed >= 2:
         return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFITEM SUDAH DIPERPANJANG SEBELUMNYA, TIDAK BISA DIPERPANJANG LAGI" + "|\r", 'utf-8')
 
-    # Get loan rules for this loan
-    query = "SELECT loan_periode FROM mst_loan_rules WHERE loan_rules_id = (SELECT loan_rules_id FROM loan WHERE loan_id = %s)"
-    loan_rules_result = fetch_data(query, (loan_id,))
+    # # Get loan rules for this loan
+    # query = "SELECT loan_periode FROM mst_loan_rules WHERE loan_rules_id = (SELECT loan_rules_id FROM loan WHERE loan_id = %s)"
+    # loan_rules_result = fetch_data(query, (loan_id,))
 
-    if not loan_rules_result or len(loan_rules_result) == 0:
-        return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "|\r", 'utf-8')
+    # if not loan_rules_result or len(loan_rules_result) == 0:
+    #     return bytes("120NNN" + gettime() + "AO" + library_name + "|AA" + str(user_id) + "|AB" + str(item_id) + "|AJ|AFLOAN RULES NOT FOUND" + "|\r", 'utf-8')
 
-    loan_periode = loan_rules_result[0][0]
+    # loan_periode = loan_rules_result[0][0]
+
+        # Mendapatkan tipe anggota
+    query = "SELECT member_type_id FROM member WHERE member_id=%s"
+    myresult = fetch_data(query, (user_id,))
+    member_type = myresult[0][0]
+
+    # Mendapatkan batasan peminjaman dan periode peminjaman
+    query = "SELECT loan_periode FROM mst_member_type WHERE member_type_id=%s"
+    myresult = fetch_data(query, (member_type,))
+    loan_periode = myresult[0][0]
 
     # If your new_due_date is a datetime object
     new_due_date = datetime.datetime.now() + datetime.timedelta(days=loan_periode)
